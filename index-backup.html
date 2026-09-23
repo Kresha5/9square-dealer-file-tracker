@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>9 Square — Dealer File Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">9S</div>
+        <div>
+          <div class="brand-name">9 Square</div>
+          <div class="brand-sub">Dealer File Tracker</div>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-page="dashboard"><span>⌂</span> Dashboard</button>
+        <button class="nav-item" data-page="dealers"><span>♙</span> Dealers</button>
+        <button class="nav-item" data-page="files"><span>▣</span> Files</button>
+        <button class="nav-item" data-page="give-file"><span>＋</span> Give File</button>
+        <button class="nav-item" data-page="admin"><span>⚙</span> Admin</button>
+      </nav>
+      <div class="sidebar-note">Frontend demo<br><span>Data is stored only in this browser.</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <div>
+          <div class="eyebrow">9 SQUARE</div>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <button class="admin-badge" id="adminBadge" title="Admin access is a frontend demo">Admin</button>
+      </header>
+
+      <section class="page active" id="page-dashboard">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">FILE CONTROL</p>
+            <h2>Keep every dealer record in one place.</h2>
+            <p>Track which 9 Square files have been given to each dealer, with dates for new entries.</p>
+          </div>
+          <button class="primary" data-go="give-file">+ Give a File</button>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="grid-two">
+          <div class="card">
+            <div class="card-head"><div><h3>Recent Activity</h3><p>Latest file records</p></div><button class="text-btn" data-go="dealers">View dealers</button></div>
+            <div id="recentActivity"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Most Distributed</h3><p>Files with the most dealer records</p></div><button class="text-btn" data-go="files">View files</button></div>
+            <div id="topFiles"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="page-dealers">
+        <div class="section-head">
+          <div><p class="eyebrow">DEALERS</p><h2>Dealer Directory</h2><p>Search by dealer name or mobile number.</p></div>
+          <button class="primary" id="addDealerBtn">+ Add Dealer</button>
+        </div>
+        <div class="toolbar"><input id="dealerSearch" class="search" placeholder="Search dealer or mobile..." autocomplete="off"><span id="dealerCount" class="count"></span></div>
+        <div id="dealerGrid" class="dealer-grid"></div>
+      </section>
+
+      <section class="page" id="page-files">
+        <div class="section-head">
+          <div><p class="eyebrow">FILES</p><h2>9 Square Files</h2><p>Search files and see which dealers have received them.</p></div>
+          <button class="primary" id="addFileBtn">+ Add File</button>
+        </div>
+        <div class="toolbar"><input id="fileSearch" class="search" placeholder="Search file..." autocomplete="off"><span id="fileCount" class="count"></span></div>
+        <div id="fileGrid" class="file-grid"></div>
+      </section>
+
+      <section class="page" id="page-give-file">
+        <div class="section-head"><div><p class="eyebrow">NEW RECORD</p><h2>Give a File</h2><p>Record a file when it is handed to a dealer.</p></div></div>
+        <div class="form-card">
+          <div class="form-grid">
+            <label>Dealer
+              <div class="combo"><input id="giveDealer" placeholder="Search dealer..." autocomplete="off"><div id="giveDealerResults" class="combo-results"></div></div>
+            </label>
+            <label>File
+              <div class="combo"><input id="giveFile" placeholder="Search file..." autocomplete="off"><div id="giveFileResults" class="combo-results"></div></div>
+            </label>
+            <label>Date Given
+              <input id="giveDate" type="date">
+            </label>
+          </div>
+          <div id="giveSummary" class="selection-summary hidden"></div>
+          <div class="form-actions"><button class="primary large" id="saveRecord">+ Give File</button><button class="secondary" id="clearGive">Clear</button></div>
+          <div id="formMessage" class="form-message"></div>
+        </div>
+        <div class="info-box"><strong>Duplicate protection</strong><span>A dealer cannot receive the same file twice. Existing records will be flagged before saving.</span></div>
+      </section>
+
+      <section class="page" id="page-admin">
+        <div class="section-head"><div><p class="eyebrow">ADMIN</p><h2>Manage System</h2><p>Add or deactivate dealers and files. Deactivated items stay in historical records.</p></div></div>
+        <div class="admin-tabs"><button class="tab active" data-admin-tab="dealers">Dealers</button><button class="tab" data-admin-tab="files">Files</button><button class="tab" data-admin-tab="data">Demo Data</button></div>
+        <div id="adminPanel"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="modal">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal>×</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_DATA = {
+  "dealers": [
+    {
+      "id": "d1",
+      "name": "Bindiya INT",
+      "mobile": "9824343410",
+      "active": true
+    },
+    {
+      "id": "d2",
+      "name": "Interier HUB",
+      "mobile": "9825510052",
+      "active": true
+    },
+    {
+      "id": "d3",
+      "name": "Pranil Sofa",
+      "mobile": "6352539797",
+      "active": true
+    },
+    {
+      "id": "d4",
+      "name": "Manishbhai",
+      "mobile": "9712677309",
+      "active": true
+    },
+    {
+      "id": "d5",
+      "name": "Sky",
+      "mobile": "9925755961",
+      "active": true
+    },
+    {
+      "id": "d6",
+      "name": "Bhagvati",
+      "mobile": "9924550705",
+      "active": true
+    },
+    {
+      "id": "d7",
+      "name": "Nihal Décor",
+      "mobile": "9109976955",
+      "active": true
+    },
+    {
+      "id": "d8",
+      "name": "Shymal Sajavt",
+      "mobile": "9377571775",
+      "active": true
+    },
+    {
+      "id": "d9",
+      "name": "Bhaviya Sofa( R )",
+      "mobile": "9879643121",
+      "active": true
+    },
+    {
+      "id": "d10",
+      "name": "Home Décor",
+      "mobile": "9898966597",
+      "active": true
+    },
+    {
+      "id": "d11",
+      "name": "Ankleswer ENG",
+      "mobile": "9033074459",
+      "active": true
+    },
+    {
+      "id": "d12",
+      "name": "Shree Ramkrupa Hardware",
+      "mobile": "7984578906",
+      "active": true
+    },
+    {
+      "id": "d13",
+      "name": "Dream Home",
+      "mobile": "9824694036",
+      "active": true
+    },
+    {
+      "id": "d14",
+      "name": "Creative Sofa",
+      "mobile": "8511099795",
+      "active": true
+    },
+    {
+      "id": "d15",
+      "name": "Alpeshbhai Dabhi",
+      "mobile": "9925257613",
+      "active": true
+    },
+    {
+      "id": "d16",
+      "name": "Qubic",
+      "mobile": "9998544447",
+      "active": true
+    },
+    {
+      "id": "d17",
+      "name": "Patel Balsar",
+      "mobile": "9998947979",
+      "active": true
+    },
+    {
+      "id": "d18",
+      "name": "Shivam Home",
+      "mobile": "9725224775",
+      "active": true
+    },
+    {
+      "id": "d19",
+      "name": "Elora Furniture",
+      "mobile": "9909403531",
+      "active": true
+    },
+    {
+      "id": "d20",
+      "name": "Kanneya FUR",
+      "mobile": "9879880417",
+      "active": true
+    },
+    {
+      "id": "d21",
+      "name": "Nilesh Sofa",
+      "mobile": "8153981555",
+      "active": true
+    },
+    {
+      "id": "d22",
+      "name": "Mahin bhai",
+      "mobile": "9824734398",
+      "active": true
+    },
+    {
+      "id": "d23",
+      "name": "Krishna Gondal",
+      "mobile": "9925341002",
+      "active": true
+    },
+    {
+      "id": "d24",
+      "name": "Radhika Gondal",
+      "mobile": "9429167165",
+      "active": true
+    },
+    {
+      "id": "d25",
+      "name": "D.G. Home(Lathidad)",
+      "mobile": "9674315565",
+      "active": true
+    },
+    {
+      "id": "d26",
+      "name": "Laljibhai K. Parmar",
+      "mobile": "9724875549",
+      "active": true
+    },
+    {
+      "id": "d27",
+      "name": "Eagle furniture",
+      "mobile": "9512367794",
+      "active": true
+    }
+  ],
+  "files": [
+    {
+      "id": "f1",
+      "name": "Amazon",
+      "active": true
+    },
+    {
+      "id": "f2",
+      "name": "Anaya",
+      "active": true
+    },
+    {
+      "id": "f3",
+      "name": "Biba",
+      "active": true
+    },
+    {
+      "id": "f4",
+      "name": "Casino",
+      "active": true
+    },
+    {
+      "id": "f5",
+      "name": "Comfey",
+      "active": true
+    },
+    {
+      "id": "f6",
+      "name": "Delta",
+      "active": true
+    },
+    {
+      "id": "f7",
+      "name": "Dezire",
+      "active": true
+    },
+    {
+      "id": "f8",
+      "name": "Dianne",
+      "active": true
+    },
+    {
+      "id": "f9",
+      "name": "Elegant",
+      "active": true
+    },
+    {
+      "id": "f10",
+      "name": "Harrison",
+      "active": true
+    },
+    {
+      "id": "f11",
+      "name": "Icon",
+      "active": true
+    },
+    {
+      "id": "f12",
+      "name": "Jackpot",
+      "active": true
+    },
+    {
+      "id": "f13",
+      "name": "Joy",
+      "active": true
+    },
+    {
+      "id": "f14",
+      "name": "Legend",
+      "active": true
+    },
+    {
+      "id": "f15",
+      "name": "Luxury",
+      "active": true
+    },
+    {
+      "id": "f16",
+      "name": "Majestic",
+      "active": true
+    },
+    {
+      "id": "f17",
+      "name": "Messi",
+      "active": true
+    },
+    {
+      "id": "f18",
+      "name": "Nexa",
+      "active": true
+    },
+    {
+      "id": "f19",
+      "name": "Olivia",
+      "active": true
+    },
+    {
+      "id": "f20",
+      "name": "Omega",
+      "active": true
+    },
+    {
+      "id": "f21",
+      "name": "Opera",
+      "active": true
+    },
+    {
+      "id": "f22",
+      "name": "Owen",
+      "active": true
+    },
+    {
+      "id": "f23",
+      "name": "Rolex",
+      "active": true
+    },
+    {
+      "id": "f24",
+      "name": "Royale",
+      "active": true
+    },
+    {
+      "id": "f25",
+      "name": "Safari",
+      "active": true
+    },
+    {
+      "id": "f26",
+      "name": "Sapphire",
+      "active": true
+    },
+    {
+      "id": "f27",
+      "name": "Tesla",
+      "active": true
+    },
+    {
+      "id": "f28",
+      "name": "Velour",
+      "active": true
+    },
+    {
+      "id": "f29",
+      "name": "Vibrant",
+      "active": true
+    },
+    {
+      "id": "f30",
+      "name": "Crystal",
+      "active": true
+    },
+    {
+      "id": "f31",
+      "name": "Texture Trend",
+      "active": true
+    },
+    {
+      "id": "f32",
+      "name": "Meteor",
+      "active": true
+    },
+    {
+      "id": "f33",
+      "name": "Shades",
+      "active": true
+    },
+    {
+      "id": "f34",
+      "name": "Sunshine",
+      "active": true
+    },
+    {
+      "id": "f35",
+      "name": "Drape Library",
+      "active": true
+    },
+    {
+      "id": "f36",
+      "name": "Dimond",
+      "active": true
+    },
+    {
+      "id": "f37",
+      "name": "Jems",
+      "active": true
+    },
+    {
+      "id": "f38",
+      "name": "Stanley",
+      "active": true
+    },
+    {
+      "id": "f39",
+      "name": "Valentine",
+      "active": true
+    }
+  ],
+  "records": [
+    {
+      "id": "r1",
+      "dealerId": "d1",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r2",
+      "dealerId": "d2",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r3",
+      "dealerId": "d3",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r4",
+      "dealerId": "d5",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r5",
+      "dealerId": "d8",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r6",
+      "dealerId": "d10",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r7",
+      "dealerId": "d11",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r8",
+      "dealerId": "d13",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r9",
+      "dealerId": "d16",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r10",
+      "dealerId": "d19",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r11",
+      "dealerId": "d22",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r12",
+      "dealerId": "d23",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r13",
+      "dealerId": "d24",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r14",
+      "dealerId": "d26",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r15",
+      "dealerId": "d27",
+      "fileId": "f1",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r16",
+      "dealerId": "d2",
+      "fileId": "f2",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r17",
+      "dealerId": "d3",
+      "fileId": "f2",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r18",
+      "dealerId": "d9",
+      "fileId": "f2",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r19",
+      "dealerId": "d11",
+      "fileId": "f2",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r20",
+      "dealerId": "d7",
+      "fileId": "f3",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r21",
+      "dealerId": "d9",
+      "fileId": "f3",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r22",
+      "dealerId": "d11",
+      "fileId": "f3",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r23",
+      "dealerId": "d26",
+      "fileId": "f3",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r24",
+      "dealerId": "d3",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r25",
+      "dealerId": "d7",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r26",
+      "dealerId": "d9",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r27",
+      "dealerId": "d11",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r28",
+      "dealerId": "d24",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r29",
+      "dealerId": "d26",
+      "fileId": "f4",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r30",
+      "dealerId": "d7",
+      "fileId": "f5",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r31",
+      "dealerId": "d9",
+      "fileId": "f5",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r32",
+      "dealerId": "d11",
+      "fileId": "f5",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r33",
+      "dealerId": "d24",
+      "fileId": "f5",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r34",
+      "dealerId": "d26",
+      "fileId": "f5",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r35",
+      "dealerId": "d7",
+      "fileId": "f6",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r36",
+      "dealerId": "d9",
+      "fileId": "f6",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r37",
+      "dealerId": "d24",
+      "fileId": "f6",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r38",
+      "dealerId": "d26",
+      "fileId": "f6",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r39",
+      "dealerId": "d26",
+      "fileId": "f7",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r40",
+      "dealerId": "d11",
+      "fileId": "f8",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r41",
+      "dealerId": "d1",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r42",
+      "dealerId": "d2",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r43",
+      "dealerId": "d3",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r44",
+      "dealerId": "d5",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r45",
+      "dealerId": "d8",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r46",
+      "dealerId": "d10",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r47",
+      "dealerId": "d11",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r48",
+      "dealerId": "d13",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r49",
+      "dealerId": "d16",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r50",
+      "dealerId": "d19",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r51",
+      "dealerId": "d21",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r52",
+      "dealerId": "d22",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r53",
+      "dealerId": "d23",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r54",
+      "dealerId": "d24",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r55",
+      "dealerId": "d26",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r56",
+      "dealerId": "d27",
+      "fileId": "f9",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r57",
+      "dealerId": "d7",
+      "fileId": "f10",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r58",
+      "dealerId": "d9",
+      "fileId": "f10",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r59",
+      "dealerId": "d11",
+      "fileId": "f10",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r60",
+      "dealerId": "d24",
+      "fileId": "f10",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r61",
+      "dealerId": "d26",
+      "fileId": "f10",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r62",
+      "dealerId": "d24",
+      "fileId": "f11",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r63",
+      "dealerId": "d26",
+      "fileId": "f11",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r64",
+      "dealerId": "d7",
+      "fileId": "f12",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r65",
+      "dealerId": "d9",
+      "fileId": "f12",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r66",
+      "dealerId": "d11",
+      "fileId": "f12",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r67",
+      "dealerId": "d24",
+      "fileId": "f12",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r68",
+      "dealerId": "d26",
+      "fileId": "f12",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r69",
+      "dealerId": "d9",
+      "fileId": "f13",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r70",
+      "dealerId": "d24",
+      "fileId": "f13",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r71",
+      "dealerId": "d1",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r72",
+      "dealerId": "d2",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r73",
+      "dealerId": "d5",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r74",
+      "dealerId": "d8",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r75",
+      "dealerId": "d10",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r76",
+      "dealerId": "d11",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r77",
+      "dealerId": "d13",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r78",
+      "dealerId": "d16",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r79",
+      "dealerId": "d19",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r80",
+      "dealerId": "d21",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r81",
+      "dealerId": "d22",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r82",
+      "dealerId": "d23",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r83",
+      "dealerId": "d24",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r84",
+      "dealerId": "d26",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r85",
+      "dealerId": "d27",
+      "fileId": "f14",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r86",
+      "dealerId": "d3",
+      "fileId": "f15",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r87",
+      "dealerId": "d11",
+      "fileId": "f15",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r88",
+      "dealerId": "d26",
+      "fileId": "f15",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r89",
+      "dealerId": "d7",
+      "fileId": "f16",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r90",
+      "dealerId": "d11",
+      "fileId": "f16",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r91",
+      "dealerId": "d24",
+      "fileId": "f16",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r92",
+      "dealerId": "d26",
+      "fileId": "f16",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r93",
+      "dealerId": "d3",
+      "fileId": "f17",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r94",
+      "dealerId": "d7",
+      "fileId": "f17",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r95",
+      "dealerId": "d9",
+      "fileId": "f17",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r96",
+      "dealerId": "d11",
+      "fileId": "f17",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r97",
+      "dealerId": "d11",
+      "fileId": "f18",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r98",
+      "dealerId": "d24",
+      "fileId": "f18",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r99",
+      "dealerId": "d26",
+      "fileId": "f18",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r100",
+      "dealerId": "d3",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r101",
+      "dealerId": "d7",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r102",
+      "dealerId": "d9",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r103",
+      "dealerId": "d11",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r104",
+      "dealerId": "d24",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r105",
+      "dealerId": "d26",
+      "fileId": "f19",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r106",
+      "dealerId": "d3",
+      "fileId": "f20",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r107",
+      "dealerId": "d7",
+      "fileId": "f20",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r108",
+      "dealerId": "d9",
+      "fileId": "f20",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r109",
+      "dealerId": "d11",
+      "fileId": "f20",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r110",
+      "dealerId": "d26",
+      "fileId": "f20",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r111",
+      "dealerId": "d3",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r112",
+      "dealerId": "d7",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r113",
+      "dealerId": "d9",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r114",
+      "dealerId": "d11",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r115",
+      "dealerId": "d21",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r116",
+      "dealerId": "d24",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r117",
+      "dealerId": "d26",
+      "fileId": "f21",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r118",
+      "dealerId": "d7",
+      "fileId": "f22",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r119",
+      "dealerId": "d9",
+      "fileId": "f22",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r120",
+      "dealerId": "d11",
+      "fileId": "f22",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r121",
+      "dealerId": "d24",
+      "fileId": "f22",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r122",
+      "dealerId": "d26",
+      "fileId": "f22",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r123",
+      "dealerId": "d7",
+      "fileId": "f23",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r124",
+      "dealerId": "d9",
+      "fileId": "f23",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r125",
+      "dealerId": "d11",
+      "fileId": "f23",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r126",
+      "dealerId": "d24",
+      "fileId": "f23",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r127",
+      "dealerId": "d3",
+      "fileId": "f24",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r128",
+      "dealerId": "d7",
+      "fileId": "f24",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r129",
+      "dealerId": "d9",
+      "fileId": "f24",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r130",
+      "dealerId": "d11",
+      "fileId": "f24",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r131",
+      "dealerId": "d24",
+      "fileId": "f24",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r132",
+      "dealerId": "d7",
+      "fileId": "f25",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r133",
+      "dealerId": "d9",
+      "fileId": "f25",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r134",
+      "dealerId": "d24",
+      "fileId": "f25",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r135",
+      "dealerId": "d26",
+      "fileId": "f25",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r136",
+      "dealerId": "d11",
+      "fileId": "f26",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r137",
+      "dealerId": "d26",
+      "fileId": "f26",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r138",
+      "dealerId": "d11",
+      "fileId": "f27",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r139",
+      "dealerId": "d26",
+      "fileId": "f27",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r140",
+      "dealerId": "d3",
+      "fileId": "f28",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r141",
+      "dealerId": "d11",
+      "fileId": "f28",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r142",
+      "dealerId": "d9",
+      "fileId": "f29",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r143",
+      "dealerId": "d11",
+      "fileId": "f29",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r144",
+      "dealerId": "d24",
+      "fileId": "f29",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r145",
+      "dealerId": "d16",
+      "fileId": "f33",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r146",
+      "dealerId": "d24",
+      "fileId": "f33",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r147",
+      "dealerId": "d25",
+      "fileId": "f33",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r148",
+      "dealerId": "d26",
+      "fileId": "f33",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r149",
+      "dealerId": "d16",
+      "fileId": "f34",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r150",
+      "dealerId": "d24",
+      "fileId": "f34",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r151",
+      "dealerId": "d25",
+      "fileId": "f34",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r152",
+      "dealerId": "d26",
+      "fileId": "f34",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r153",
+      "dealerId": "d16",
+      "fileId": "f35",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r154",
+      "dealerId": "d24",
+      "fileId": "f35",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r155",
+      "dealerId": "d25",
+      "fileId": "f35",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r156",
+      "dealerId": "d26",
+      "fileId": "f35",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r157",
+      "dealerId": "d2",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r158",
+      "dealerId": "d5",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r159",
+      "dealerId": "d8",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r160",
+      "dealerId": "d14",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r161",
+      "dealerId": "d16",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r162",
+      "dealerId": "d21",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r163",
+      "dealerId": "d23",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r164",
+      "dealerId": "d24",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r165",
+      "dealerId": "d25",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r166",
+      "dealerId": "d26",
+      "fileId": "f36",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r167",
+      "dealerId": "d11",
+      "fileId": "f37",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r168",
+      "dealerId": "d9",
+      "fileId": "f38",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r169",
+      "dealerId": "d11",
+      "fileId": "f38",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r170",
+      "dealerId": "d24",
+      "fileId": "f38",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r171",
+      "dealerId": "d26",
+      "fileId": "f38",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r172",
+      "dealerId": "d9",
+      "fileId": "f39",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r173",
+      "dealerId": "d11",
+      "fileId": "f39",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r174",
+      "dealerId": "d24",
+      "fileId": "f39",
+      "date": "",
+      "source": "Excel import"
+    },
+    {
+      "id": "r175",
+      "dealerId": "d26",
+      "fileId": "f39",
+      "date": "",
+      "source": "Excel import"
+    }
+  ]
+};
+    const STORAGE_KEY = "nineSquareDealerTracker_v1";
+    let state = loadState();
+    let selectedDealerId = null;
+    let selectedFileId = null;
+    let currentAdminTab = "dealers";
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (saved && saved.dealers && saved.files && saved.records) return saved;
+      } catch(e) {}
+      return structuredClone(INITIAL_DATA);
+    }
+    function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); renderAll(); }
+    function activeDealers(){ return state.dealers.filter(d=>d.active); }
+    function activeFiles(){ return state.files.filter(f=>f.active); }
+    function recordsForDealer(id){ return state.records.filter(r=>r.dealerId===id); }
+    function recordsForFile(id){ return state.records.filter(r=>r.fileId===id); }
+    function esc(s){ return String(s ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+    function today(){ return new Date().toISOString().slice(0,10); }
+    function formatDate(d){ if(!d) return "Date not recorded"; const x=new Date(d+"T00:00:00"); return x.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}); }
+    function dealerName(id){ return state.dealers.find(d=>d.id===id)?.name || "Unknown dealer"; }
+    function fileName(id){ return state.files.find(f=>f.id===id)?.name || "Unknown file"; }
+    function nextId(prefix, list){ return prefix + (Math.max(0,...list.map(x=>parseInt(String(x.id).replace(/\D/g,""))||0))+1); }
+
+    const titles={dashboard:"Dashboard",dealers:"Dealers",files:"Files","give-file":"Give File",admin:"Admin"};
+    function go(page){
+      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+      document.getElementById("page-"+page).classList.add("active");
+      document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+      document.getElementById("pageTitle").textContent=titles[page];
+      document.getElementById("sidebar").classList.remove("open");
+      if(page==="give-file"){ document.getElementById("giveDate").value ||= today(); }
+    }
+    document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+    document.querySelectorAll(".nav-item").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+    document.getElementById("menuBtn").onclick=()=>document.getElementById("sidebar").classList.toggle("open");
+
+    function renderDashboard(){
+      const totalDistributed=state.records.length;
+      const recent=[...state.records].sort((a,b)=>(b.date||"").localeCompare(a.date||"") || b.id.localeCompare(a.id)).slice(0,6);
+      document.getElementById("stats").innerHTML=[
+        ["Total Dealers",activeDealers().length,"👥"],
+        ["Active Files",activeFiles().length,"▣"],
+        ["Files Given",totalDistributed,"✓"],
+        ["Dealers With Files",new Set(state.records.map(r=>r.dealerId)).size,"↗"]
+      ].map(x=>`<div class="stat-card"><div class="stat-icon">${x[2]}</div><div><span>${x[0]}</span><strong>${x[1]}</strong></div></div>`).join("");
+      document.getElementById("recentActivity").innerHTML=recent.length?recent.map(r=>`<div class="activity"><div class="avatar">${esc(dealerName(r.dealerId).charAt(0))}</div><div><strong>${esc(fileName(r.fileId))}</strong><span>${esc(dealerName(r.dealerId))}</span></div><time>${formatDate(r.date)}</time></div>`).join(""):`<div class="empty">No records yet.</div>`;
+      const counts={}; state.records.forEach(r=>counts[r.fileId]=(counts[r.fileId]||0)+1);
+      const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+      document.getElementById("topFiles").innerHTML=top.length?top.map(([id,n])=>`<div class="rank-row"><div><strong>${esc(fileName(id))}</strong><div class="bar"><i style="width:${Math.min(100,n/Math.max(1,top[0][1])*100)}%"></i></div></div><b>${n}</b></div>`).join(""):`<div class="empty">No distribution data yet.</div>`;
+    }
+
+    function renderDealers(){
+      const q=(document.getElementById("dealerSearch").value||"").toLowerCase().trim();
+      const arr=activeDealers().filter(d=>d.name.toLowerCase().includes(q)||d.mobile.includes(q));
+      document.getElementById("dealerCount").textContent=`${arr.length} dealer${arr.length!==1?"s":""}`;
+      document.getElementById("dealerGrid").innerHTML=arr.map(d=>{
+        const n=recordsForDealer(d.id).length;
+        return `<button class="dealer-card" data-dealer="${d.id}"><div class="avatar big">${esc(d.name.charAt(0))}</div><div class="dealer-info"><strong>${esc(d.name)}</strong><span>${esc(d.mobile||"No mobile number")}</span></div><div class="dealer-files"><b>${n}</b><span>files</span></div><span class="arrow">›</span></button>`;
+      }).join("") || `<div class="empty-card">No dealers found.</div>`;
+      document.querySelectorAll("[data-dealer]").forEach(b=>b.onclick=()=>openDealer(b.dataset.dealer));
+    }
+    document.getElementById("dealerSearch").addEventListener("input",renderDealers);
+
+    function renderFiles(){
+      const q=(document.getElementById("fileSearch").value||"").toLowerCase().trim();
+      const arr=activeFiles().filter(f=>f.name.toLowerCase().includes(q));
+      document.getElementById("fileCount").textContent=`${arr.length} file${arr.length!==1?"s":""}`;
+      document.getElementById("fileGrid").innerHTML=arr.map(f=>{
+        const n=recordsForFile(f.id).length;
+        return `<button class="file-card" data-file="${f.id}"><div class="file-icon">▣</div><div><strong>${esc(f.name)}</strong><span>${n} dealer${n!==1?"s":""}</span></div><span class="arrow">›</span></button>`;
+      }).join("") || `<div class="empty-card">No files found.</div>`;
+      document.querySelectorAll("[data-file]").forEach(b=>b.onclick=()=>openFile(b.dataset.file));
+    }
+    document.getElementById("fileSearch").addEventListener("input",renderFiles);
+
+    function openDealer(id){
+      const d=state.dealers.find(x=>x.id===id); if(!d)return;
+      const recs=recordsForDealer(id);
+      document.getElementById("modalContent").innerHTML=`<p class="eyebrow">DEALER</p><h2>${esc(d.name)}</h2><p class="modal-sub">${esc(d.mobile||"No mobile number")} · <strong>${recs.length} files</strong></p><div class="modal-list">${recs.length?recs.map(r=>`<div class="record-row"><div class="file-icon small">▣</div><div><strong>${esc(fileName(r.fileId))}</strong><span>${formatDate(r.date)}</span></div></div>`).join(""):`<div class="empty">No files recorded for this dealer.</div>`}</div><div class="modal-actions"><button class="primary" onclick="selectDealerAndGo('${id}')">+ Give a File</button></div>`;
+      showModal();
+    }
+    function openFile(id){
+      const f=state.files.find(x=>x.id===id); if(!f)return;
+      const recs=recordsForFile(id);
+      document.getElementById("modalContent").innerHTML=`<p class="eyebrow">9 SQUARE FILE</p><h2>${esc(f.name)}</h2><p class="modal-sub"><strong>${recs.length} dealer${recs.length!==1?"s":""}</strong> have this file</p><div class="modal-list">${recs.length?recs.map(r=>`<div class="record-row"><div class="avatar">${esc(dealerName(r.dealerId).charAt(0))}</div><div><strong>${esc(dealerName(r.dealerId))}</strong><span>${formatDate(r.date)}</span></div></div>`).join(""):`<div class="empty">No dealer records for this file.</div>`}</div>`;
+      showModal();
+    }
+    function selectDealerAndGo(id){ closeModal(); selectedDealerId=id; const d=state.dealers.find(x=>x.id===id); document.getElementById("giveDealer").value=d?.name||""; go("give-file"); renderGiveResults(); }
+
+    function setupCombo(inputId, resultsId, kind){
+      const input=document.getElementById(inputId), box=document.getElementById(resultsId);
+      input.addEventListener("input",renderGiveResults);
+      input.addEventListener("focus",renderGiveResults);
+      input.addEventListener("keydown",e=>{if(e.key==="Escape")box.classList.remove("show")});
+    }
+    function renderGiveResults(){
+      const di=document.getElementById("giveDealer"), fi=document.getElementById("giveFile");
+      const dr=document.getElementById("giveDealerResults"), fr=document.getElementById("giveFileResults");
+      const dq=(di.value||"").toLowerCase(), fq=(fi.value||"").toLowerCase();
+      dr.innerHTML=activeDealers().filter(d=>d.name.toLowerCase().includes(dq)||d.mobile.includes(dq)).slice(0,10).map(d=>`<button data-pick-dealer="${d.id}"><strong>${esc(d.name)}</strong><span>${esc(d.mobile)}</span></button>`).join("")||`<div class="combo-empty">No dealer found</div>`;
+      fr.innerHTML=activeFiles().filter(f=>f.name.toLowerCase().includes(fq)).slice(0,12).map(f=>`<button data-pick-file="${f.id}"><strong>${esc(f.name)}</strong></button>`).join("")||`<div class="combo-empty">No file found</div>`;
+      dr.classList.add("show"); fr.classList.add("show");
+      document.querySelectorAll("[data-pick-dealer]").forEach(b=>b.onclick=()=>{selectedDealerId=b.dataset.pickDealer;di.value=dealerName(selectedDealerId);dr.classList.remove("show");updateSummary()});
+      document.querySelectorAll("[data-pick-file]").forEach(b=>b.onclick=()=>{selectedFileId=b.dataset.pickFile;fi.value=fileName(selectedFileId);fr.classList.remove("show");updateSummary()});
+    }
+    function updateSummary(){
+      const s=document.getElementById("giveSummary");
+      if(selectedDealerId&&selectedFileId){
+        const exists=state.records.some(r=>r.dealerId===selectedDealerId&&r.fileId===selectedFileId);
+        s.classList.remove("hidden"); s.classList.toggle("warning",exists);
+        s.innerHTML=exists?`⚠️ <strong>Already recorded.</strong> ${esc(dealerName(selectedDealerId))} already has ${esc(fileName(selectedFileId))}.`:`✓ Ready to record <strong>${esc(fileName(selectedFileId))}</strong> for <strong>${esc(dealerName(selectedDealerId))}</strong>.`;
+      } else s.classList.add("hidden");
+    }
+    setupCombo("giveDealer","giveDealerResults","dealer"); setupCombo("giveFile","giveFileResults","file");
+    document.addEventListener("click",e=>{
+      if(!e.target.closest(".combo")) document.querySelectorAll(".combo-results").forEach(x=>x.classList.remove("show"));
+    });
+    document.getElementById("saveRecord").onclick=()=>{
+      const date=document.getElementById("giveDate").value;
+      const msg=document.getElementById("formMessage");
+      if(!selectedDealerId||!selectedFileId||!date){msg.className="form-message error";msg.textContent="Please select a dealer, a file and a date.";return;}
+      if(state.records.some(r=>r.dealerId===selectedDealerId&&r.fileId===selectedFileId)){msg.className="form-message error";msg.textContent="This dealer already has this file. No duplicate was created.";return;}
+      state.records.push({id:nextId("r",state.records),dealerId:selectedDealerId,fileId:selectedFileId,date,source:"Website"});
+      saveState(); msg.className="form-message success";msg.textContent=`✓ ${fileName(selectedFileId)} recorded for ${dealerName(selectedDealerId)}.`;
+      setTimeout(()=>{clearGive();},700);
+    };
+    function clearGive(){selectedDealerId=null;selectedFileId=null;document.getElementById("giveDealer").value="";document.getElementById("giveFile").value="";document.getElementById("giveDate").value=today();document.getElementById("giveSummary").classList.add("hidden");document.getElementById("formMessage").textContent="";}
+    document.getElementById("clearGive").onclick=clearGive;
+
+    function renderAdmin(){
+      const p=document.getElementById("adminPanel");
+      if(currentAdminTab==="dealers"){
+        p.innerHTML=`<div class="admin-toolbar"><button class="primary" onclick="adminAddDealer()">+ Add Dealer</button><span>Active dealers: ${activeDealers().length}</span></div><div class="admin-table">${state.dealers.map(d=>`<div class="admin-row ${d.active?"":"inactive"}"><div><strong>${esc(d.name)}</strong><span>${esc(d.mobile||"No mobile")}</span></div><b>${recordsForDealer(d.id).length} files</b><button class="small-btn" onclick="adminToggleDealer('${d.id}')">${d.active?"Deactivate":"Activate"}</button></div>`).join("")}</div>`;
+      } else if(currentAdminTab==="files"){
+        p.innerHTML=`<div class="admin-toolbar"><button class="primary" onclick="adminAddFile()">+ Add File</button><span>Active files: ${activeFiles().length}</span></div><div class="admin-table">${state.files.map(f=>`<div class="admin-row ${f.active?"":"inactive"}"><div><strong>${esc(f.name)}</strong><span>${recordsForFile(f.id).length} dealer records</span></div><button class="small-btn" onclick="adminToggleFile('${f.id}')">${f.active?"Deactivate":"Activate"}</button></div>`).join("")}</div>`;
+      } else {
+        p.innerHTML=`<div class="demo-card"><h3>Frontend demo controls</h3><p>This version uses your Excel data as starting sample data and stores changes in this browser's localStorage. The next step will replace this storage with Supabase so all devices share one live database.</p><div class="demo-actions"><button class="secondary" onclick="exportData()">Export current demo data</button><button class="danger" onclick="resetDemo()">Reset to Excel sample</button></div></div>`;
+      }
+    }
+    document.querySelectorAll("[data-admin-tab]").forEach(b=>b.onclick=()=>{currentAdminTab=b.dataset.adminTab;document.querySelectorAll("[data-admin-tab]").forEach(x=>x.classList.toggle("active",x===b));renderAdmin()});
+    document.getElementById("addDealerBtn").onclick=()=>adminAddDealer();
+    document.getElementById("addFileBtn").onclick=()=>adminAddFile();
+
+    function adminAddDealer(){
+      document.getElementById("modalContent").innerHTML=`<p class="eyebrow">ADMIN</p><h2>Add Dealer</h2><div class="modal-form"><label>Dealer Name<input id="newDealerName" placeholder="e.g. ABC Interiors"></label><label>Mobile Number<input id="newDealerMobile" inputmode="numeric" placeholder="10 digit mobile number"></label><button class="primary large" onclick="saveNewDealer()">Save Dealer</button><div id="modalMsg" class="form-message"></div></div>`;
+      showModal(); setTimeout(()=>document.getElementById("newDealerName").focus(),50);
+    }
+    function saveNewDealer(){
+      const name=document.getElementById("newDealerName").value.trim(), mobile=document.getElementById("newDealerMobile").value.trim(), m=document.getElementById("modalMsg");
+      if(!name){m.className="form-message error";m.textContent="Dealer name is required.";return;}
+      if(state.dealers.some(d=>d.name.toLowerCase()===name.toLowerCase())){m.className="form-message error";m.textContent="A dealer with this name already exists.";return;}
+      state.dealers.push({id:nextId("d",state.dealers),name,mobile,active:true});saveState();closeModal();go("dealers");
+    }
+    function adminToggleDealer(id){const d=state.dealers.find(x=>x.id===id);if(!d)return;d.active=!d.active;saveState();renderAdmin();}
+    function adminAddFile(){
+      document.getElementById("modalContent").innerHTML=`<p class="eyebrow">ADMIN</p><h2>Add File</h2><div class="modal-form"><label>File Name<input id="newFileName" placeholder="e.g. New Design"></label><button class="primary large" onclick="saveNewFile()">Save File</button><div id="modalMsg" class="form-message"></div></div>`;
+      showModal(); setTimeout(()=>document.getElementById("newFileName").focus(),50);
+    }
+    function saveNewFile(){
+      const name=document.getElementById("newFileName").value.trim(),m=document.getElementById("modalMsg");
+      if(!name){m.className="form-message error";m.textContent="File name is required.";return;}
+      if(state.files.some(f=>f.name.toLowerCase()===name.toLowerCase())){m.className="form-message error";m.textContent="A file with this name already exists.";return;}
+      state.files.push({id:nextId("f",state.files),name,active:true});saveState();closeModal();go("files");
+    }
+    function adminToggleFile(id){const f=state.files.find(x=>x.id===id);if(!f)return;f.active=!f.active;saveState();renderAdmin();}
+    function exportData(){
+      const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="9square-demo-data.json";a.click();URL.revokeObjectURL(a.href);
+    }
+    function resetDemo(){if(confirm("Reset all browser demo changes to the original Excel sample?")){localStorage.removeItem(STORAGE_KEY);state=loadState();renderAll();}}
+    function showModal(){document.getElementById("modal").classList.remove("hidden")}
+    function closeModal(){document.getElementById("modal").classList.add("hidden")}
+    document.querySelectorAll("[data-close-modal]").forEach(x=>x.onclick=closeModal);
+    document.getElementById("adminBadge").onclick=()=>go("admin");
+
+    function renderAll(){renderDashboard();renderDealers();renderFiles();renderAdmin();updateSummary();}
+    document.getElementById("giveDate").value=today();
+    renderAll();
+  </script>
+</body>
+</html>

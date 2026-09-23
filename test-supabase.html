@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Supabase Connection Test</title>
+</head>
+<body>
+  <h2>9 Square Supabase Test</h2>
+  <p id="status">Testing connection...</p>
+
+  <script type="module">
+    import { supabase } from "./supabase.js";
+
+    async function testConnection() {
+      const status = document.getElementById("status");
+
+      const { data, error } = await supabase
+        .from("dealers")
+        .select("id")
+        .limit(1);
+
+      if (error) {
+        console.error(error);
+        status.textContent = "❌ Connection failed: " + error.message;
+        return;
+      }
+
+      status.textContent = "✅ Supabase connected successfully!";
+      console.log("Supabase response:", data);
+    }
+
+    testConnection();
+  </script>
+</body>
+</html>
