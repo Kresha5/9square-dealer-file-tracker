@@ -2115,29 +2115,65 @@
     document.getElementById("clearGive").onclick=clearGive;
 
     async function requireAdmin(){
-      const {data:{session}}=await window.supabaseClient.auth.getSession();
-      if(session?.user){
-        adminUser=session.user;
-        return true;
-      }
-      document.getElementById("modalContent").innerHTML=`<p class="eyebrow">ADMIN</p><h2>Admin Login</h2><div class="modal-form"><label>Email<input id="adminEmail" type="email" placeholder="Admin email"></label><label>Password<input id="adminPassword" type="password" placeholder="Password"></label><button class="primary large" id="adminLoginBtn">Login</button><div id="modalMsg" class="form-message"></div></div>`;
-      showModal();
-      document.getElementById("adminLoginBtn").onclick=adminLogin;
-      setTimeout(()=>document.getElementById("adminEmail").focus(),50);
-      return false;
-    }
+        if(adminUser?.pinAuthenticated){
+    return true;
+  }
+  const modalContent=document.getElementById("modalContent");
+
+  modalContent.innerHTML=`
+    <p class="eyebrow">ADMIN</p>
+    <h2>Admin Access</h2>
+    <div class="modal-form">
+      <label>
+        Admin PIN
+        <input id="adminPin" type="password" inputmode="numeric" maxlength="4" placeholder="Enter PIN">
+      </label>
+      <button class="primary large" id="adminLoginBtn">Login</button>
+      <div id="modalMsg" class="form-message"></div>
+    </div>
+  `;
+
+  showModal();
+
+  document.getElementById("adminLoginBtn").onclick=adminLogin;
+
+  setTimeout(()=>{
+    document.getElementById("adminPin").focus();
+  },50);
+
+  return false;
+}
 
     async function adminLogin(){
-      const email=document.getElementById("adminEmail").value.trim();
-      const password=document.getElementById("adminPassword").value;
-      const m=document.getElementById("modalMsg");
-      if(!email||!password){m.className="form-message error";m.textContent="Please enter email and password.";return;}
-      const {data,error}=await window.supabaseClient.auth.signInWithPassword({email,password});
-      if(error){m.className="form-message error";m.textContent=error.message;return;}
-      adminUser=data.user;
-      closeModal();
-      go("admin");
-    }
+  const pin=document.getElementById("adminPin").value.trim();
+  const m=document.getElementById("modalMsg");
+
+  if(!pin){
+    m.className="form-message error";
+    m.textContent="Please enter the Admin PIN.";
+    return;
+  }
+
+  const {data,error}=await window.supabaseClient.functions.invoke("dynamic-handler",{
+    body:{pin}
+  });
+
+  if(error){
+    m.className="form-message error";
+    m.textContent="Could not verify PIN. Please try again.";
+    return;
+  }
+
+  if(!data?.success){
+    m.className="form-message error";
+    m.textContent=data?.message||"Incorrect PIN.";
+    return;
+  }
+
+  adminUser={pinAuthenticated:true,pin:pin};
+  closeModal();
+  go("admin");
+}
 
     async function adminLogout(){
       await window.supabaseClient.auth.signOut();
@@ -2170,48 +2206,177 @@
       document.getElementById("modalContent").innerHTML=`<p class="eyebrow">ADMIN</p><h2>Add Dealer</h2><div class="modal-form"><label>Dealer Name<input id="newDealerName" placeholder="e.g. ABC Interiors"></label><label>Mobile Number<input id="newDealerMobile" inputmode="numeric" placeholder="10 digit mobile number"></label><button class="primary large" onclick="saveNewDealer()">Save Dealer</button><div id="modalMsg" class="form-message"></div></div>`;
       showModal(); setTimeout(()=>document.getElementById("newDealerName").focus(),50);
     }
-    async function saveNewDealer(){
-      const name=document.getElementById("newDealerName").value.trim(), mobile=document.getElementById("newDealerMobile").value.trim(), m=document.getElementById("modalMsg");
-      if(!name){m.className="form-message error";m.textContent="Dealer name is required.";return;}
-      if(state.dealers.some(d=>d.name.toLowerCase()===name.toLowerCase())){m.className="form-message error";m.textContent="A dealer with this name already exists.";return;}
-      const {data,error}=await window.supabaseClient.from("dealers").insert({name,mobile:mobile||null,active:true}).select("*").single();
-      if(error){m.className="form-message error";m.textContent=error.message||"Could not add dealer.";return;}
-      state.dealers.push({id:String(data.id),name:data.name,mobile:data.mobile||"",active:data.active});
-      state.dealers.sort((a,b)=>a.name.localeCompare(b.name));
-      renderAll();closeModal();go("dealers");
+ async function saveNewDealer(){
+
+  const name=document.getElementById("newDealerName").value.trim();
+  const mobile=document.getElementById("newDealerMobile").value.trim();
+  const m=document.getElementById("modalMsg");
+
+  if(!name){
+    m.className="form-message error";
+    m.textContent="Dealer name is required.";
+    return;
+  }
+
+  if(state.dealers.some(d=>d.name.toLowerCase()===name.toLowerCase())){
+    m.className="form-message error";
+    m.textContent="A dealer with this name already exists.";
+    return;
+  }
+
+  const pin=adminUser?.pin;
+
+  if(!pin){
+    m.className="form-message error";
+    m.textContent="Admin authentication expired. Please open Admin again.";
+    return;
+  }
+
+  const {data,error}=await window.supabaseClient.functions.invoke("dynamic-handler",{
+    body:{
+      pin,
+      action:"add_dealer",
+      name,
+      mobile:mobile||null
     }
+  });
+
+  if(error){
+    m.className="form-message error";
+    m.textContent="Could not add dealer. Please try again.";
+    return;
+  }
+
+  if(!data?.success){
+    m.className="form-message error";
+    m.textContent=data?.message||"Could not add dealer.";
+    return;
+  }
+
+  const dealer=data.dealer;
+
+  state.dealers.push({
+    id:String(dealer.id),
+    name:dealer.name,
+    mobile:dealer.mobile||"",
+    active:dealer.active
+  });
+
+  state.dealers.sort((a,b)=>a.name.localeCompare(b.name));
+
+  renderAll();
+  closeModal();
+  go("dealers");
+}
     async function adminToggleDealer(id){
-      const d=state.dealers.find(x=>String(x.id)===String(id));if(!d)return;
-      const {data,error}=await window.supabaseClient.from("dealers").update({active:!d.active}).eq("id",Number(id)).select("*").single();
-      if(error){alert(error.message||"Could not update dealer.");return;}
-      d.active=data.active;renderAll();await renderAdmin();
-    }
+  const d=state.dealers.find(x=>String(x.id)===String(id));
+  if(!d)return;
+
+  const newActive=!d.active;
+
+  const {error}=await window.supabaseClient
+    .from("dealers")
+    .update({active:newActive})
+    .eq("id",Number(id));
+
+  if(error){
+    alert(error.message||"Could not update dealer.");
+    return;
+  }
+
+  d.active=newActive;
+  renderAll();
+  await renderAdmin();
+}
 
     async function adminAddFile(){
       document.getElementById("modalContent").innerHTML=`<p class="eyebrow">ADMIN</p><h2>Add File</h2><div class="modal-form"><label>File Name<input id="newFileName" placeholder="e.g. New Design"></label><button class="primary large" onclick="saveNewFile()">Save File</button><div id="modalMsg" class="form-message"></div></div>`;
       showModal(); setTimeout(()=>document.getElementById("newFileName").focus(),50);
     }
     async function saveNewFile(){
-      const name=document.getElementById("newFileName").value.trim(),m=document.getElementById("modalMsg");
-      if(!name){m.className="form-message error";m.textContent="File name is required.";return;}
-      if(state.files.some(f=>f.name.toLowerCase()===name.toLowerCase())){m.className="form-message error";m.textContent="A file with this name already exists.";return;}
-      const {data,error}=await window.supabaseClient.from("files").insert({name,active:true}).select("*").single();
-      if(error){m.className="form-message error";m.textContent=error.message||"Could not add file.";return;}
-      state.files.push({id:String(data.id),name:data.name,active:data.active});
-      state.files.sort((a,b)=>a.name.localeCompare(b.name));
-      renderAll();closeModal();go("files");
+
+  const name=document.getElementById("newFileName").value.trim();
+  const m=document.getElementById("modalMsg");
+
+  if(!name){
+    m.className="form-message error";
+    m.textContent="File name is required.";
+    return;
+  }
+
+  if(state.files.some(f=>f.name.toLowerCase()===name.toLowerCase())){
+    m.className="form-message error";
+    m.textContent="A file with this name already exists.";
+    return;
+  }
+
+  const pin=adminUser?.pin;
+
+  if(!pin){
+    m.className="form-message error";
+    m.textContent="Admin authentication expired. Please open Admin again.";
+    return;
+  }
+
+  const {data,error}=await window.supabaseClient.functions.invoke("dynamic-handler",{
+    body:{
+      pin,
+      action:"add_file",
+      name
     }
+  });
+
+  if(error){
+    m.className="form-message error";
+    m.textContent="Could not add file. Please try again.";
+    return;
+  }
+
+  if(!data?.success){
+    m.className="form-message error";
+    m.textContent=data?.message||"Could not add file.";
+    return;
+  }
+
+  const file=data.file;
+
+  state.files.push({
+    id:String(file.id),
+    name:file.name,
+    active:file.active
+  });
+
+  state.files.sort((a,b)=>a.name.localeCompare(b.name));
+
+  renderAll();
+  closeModal();
+  go("files");
+}
     async function adminToggleFile(id){
-      const f=state.files.find(x=>String(x.id)===String(id));if(!f)return;
-      const {data,error}=await window.supabaseClient.from("files").update({active:!f.active}).eq("id",Number(id)).select("*").single();
-      if(error){alert(error.message||"Could not update file.");return;}
-      f.active=data.active;renderAll();await renderAdmin();
-    }
+  const f=state.files.find(x=>String(x.id)===String(id));
+  if(!f)return;
+
+  const newActive=!f.active;
+
+  const {error}=await window.supabaseClient
+    .from("files")
+    .update({active:newActive})
+    .eq("id",Number(id));
+
+  if(error){
+    alert(error.message||"Could not update file.");
+    return;
+  }
+
+  f.active=newActive;
+  renderAll();
+  await renderAdmin();
+}
 
     function showModal(){document.getElementById("modal").classList.remove("hidden")}
     function closeModal(){document.getElementById("modal").classList.add("hidden")}
     document.querySelectorAll("[data-close-modal]").forEach(x=>x.onclick=closeModal);
-    document.getElementById("adminBadge").onclick=async ()=>{if(await requireAdmin())go("admin");};
+    document.getElementById("adminBadge").onclick=()=>requireAdmin();
 
     function renderAll(){
       renderDashboard();
